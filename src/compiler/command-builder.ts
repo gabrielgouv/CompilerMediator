@@ -1,4 +1,4 @@
-export class Command {
+export class CommandBuilder {
 
     private variables = new Map<string, string | number | boolean | undefined>()
 
@@ -11,26 +11,37 @@ export class Command {
      * @param name - Variable name.
      * @param value - Variable value.
      */
-    public putVariable(name: string, value: string | number | boolean | undefined): void {
+    public set(name: string, value: string | number | boolean | undefined): CommandBuilder {
         value = typeof value !== 'undefined' ? value : ''
         this.variables.set(name, value)
+        return this
     }
 
     /**
      * Merges a new whole map of variables in variables map.
      * @param variables - Map of variables.
      */
-    public putVariables(variables: Map<string, string | number | boolean | undefined>): void {
+    public setMap(variables: Map<string, string | number | boolean | undefined>): CommandBuilder {
         this.variables = new Map([...this.variables, ...variables])
+        return this
     }
 
     /**
-     * Returns the command with all variables replaced by it respective values.
+     * Returns the command string with all variables replaced by it respective values.
      * If the command string has variables that are not in variables map they will not replaced.
      */
-    public buildCommand(): string {
+    public buildAsString(): string {
         this.configureVariables()
         return this.command
+    }
+
+    /**
+     * Returns the command object with all variables replaced by it respective values.
+     * If the command string has variables that are not in variables map they will not replaced.
+     */
+    public build(): CommandBuilder {
+        this.configureVariables()
+        return this
     }
 
     /**
