@@ -76,15 +76,15 @@ export class Process {
     }
 
     private setup() {
-        this.setupOutputCallback()
-        this.setupErrorCallback()
-        this.setupFinishCallback()
+        this.setupOutputObservable()
+        this.setupErrorObservable()
+        this.setupFinishObservable()
         this.childProcess.on('exit', () => {
             clearTimeout(this.timeout)
         })
     }
 
-    private setupOutputCallback(): void {
+    private setupOutputObservable(): void {
         this.output = Observable.create((observer: Observer<string>) => {
             if (!this.childProcess) {
                 observer.error(this.throwProcessNotStartedError())
@@ -96,7 +96,7 @@ export class Process {
         })
     }
 
-    private setupErrorCallback(): void {
+    private setupErrorObservable(): void {
         this.error = Observable.create((observer: Observer<string>) => {
             if (!this.childProcess) {
                 observer.error(this.throwProcessNotStartedError())
@@ -108,7 +108,7 @@ export class Process {
         })
     }
 
-    private setupFinishCallback(): void {
+    private setupFinishObservable(): void {
         this.finish = Observable.create((observer: Observer<{code: number, took: number}>) => {
             if (!this.childProcess) {
                 observer.error(this.throwProcessNotStartedError())
