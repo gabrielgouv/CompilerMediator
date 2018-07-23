@@ -1,6 +1,7 @@
 import 'jest'
 
 import { Process, IProcessOutput, ReturnType } from '../src/runtime/process'
+import { CommandNotDefinedError } from '../src/errors/command-not-defined-error'
 
 const fileDir = `${__dirname}/files/nodejs`
 
@@ -40,7 +41,6 @@ test('runs a nodejs file with infinite loop', (done) => {
         .command('node test-infinite-loop.js')
         .run()
         .onFinish((processOutput: IProcessOutput) => {
-            console.log(processOutput)
             expect(processOutput.type).toBe(ReturnType.TIMED_OUT)
             expect(processOutput.data).not.toBe(undefined)
             expect(processOutput.code).toBe(null)
@@ -66,5 +66,12 @@ test('runs a nodejs file that receives two numbers and sum', (done) => {
         expect(processOutput.took).not.toBe(undefined)
         done()
     })
+})
 
+test('try to run without command', () => {
+    expect(() => {
+        new Process()
+        .directory(fileDir)
+        .run()
+    }).toThrow(CommandNotDefinedError)
 })
