@@ -50,14 +50,13 @@ export class Process {
         return this
     }
 
-    public onInputRequested(...input: string[]): Process {
+    public writeInput(...input: string[]): void {
         if (input) {
             for (const index of input.keys()) {
                 this.childProcess.stdin.write(input[index])
             }
+            this.childProcess.stdin.end()
         }
-        this.childProcess.stdin.end()
-        return this
     }
 
     public run(command: string): Process {
