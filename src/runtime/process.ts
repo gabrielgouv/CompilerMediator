@@ -2,19 +2,31 @@ import kill from 'tree-kill'
 import { spawn, ChildProcess, SpawnOptions } from 'child_process'
 import { Observable, Observer } from 'rxjs'
 import { ProcessNotStartedError } from '../errors/process-not-started-error'
+import { CommandNotDefinedError } from '../errors/command-not-defined-error'
+
+export enum ReturnType {
+    SUCCESS,
+    ERROR,
+    TIMED_OUT,
+}
+
+export interface IProcessOutput {
+    type?: ReturnType
+    code?: number
+    data?: string
+    took?: number
+}
 
 export class Process {
-
-    public output!: Observable<string | Buffer>
-    public error!: Observable<string | Buffer>
-    public finish!: Observable<{code: number, took: number}>
 
     private childProcess!: ChildProcess
     private spawnOptions: SpawnOptions
     private timeout: any
     private started!: [number, number]
+    private processOutput: IProcessOutput
 
-    constructor(options?: SpawnOptions) {
+    constructor(private cmd?: string, options?: SpawnOptions) {
+        this.processOutput = {}
         if (options) {
             this.spawnOptions = options
         } else {
@@ -41,7 +53,7 @@ export class Process {
         return this
     }
 
-    public execTimeout(timeout: number): Process {
+    public executionTimeout(timeout: number): Process {
         if (timeout && timeout > 0) {
             this.timeout = setTimeout(() => {
                 this.kill()
@@ -50,20 +62,41 @@ export class Process {
         return this
     }
 
-    public writeInput(...input: string[]): void {
+    public onFinish(callback: (output: IProcessOutput) => void): Process {
+        this.onClose().subscribe((processOutput) => {
+            callback(processOutput)
+        }, (error) => {
+            throw error
+        })
+        return this
+    }
+
+    public writeInput(...input: string[]): Process {
+        if (!this.childProcess) {
+            this.throwProcessNotStartedError()
+        }
         if (input) {
             for (const index of input.keys()) {
                 this.childProcess.stdin.write(input[index])
             }
             this.childProcess.stdin.end()
         }
+        return this
     }
 
-    public run(command: string): Process {
-        this.started = process.hrtime()
-        this.childProcess = spawn(command, [], this.spawnOptions)
-        this.setup()
+    public command(cmd: string): Process {
+        this.cmd = cmd
         return this
+    }
+
+    public run(): Process {
+        if (this.cmd) {
+            this.started = process.hrtime()
+            this.childProcess = spawn(this.cmd, [], this.spawnOptions)
+            this.setup()
+            return this
+        }
+        throw this.throwCommandNotDefinedError()
     }
 
     public getProcess(): ChildProcess {
@@ -75,46 +108,45 @@ export class Process {
     }
 
     private setup() {
-        this.setupOutputObservable()
-        this.setupErrorObservable()
-        this.setupFinishObservable()
+        this.setupOnOutput()
+        this.setupOnError()
         this.childProcess.on('exit', () => {
             clearTimeout(this.timeout)
         })
     }
 
-    private setupOutputObservable(): void {
-        this.output = Observable.create((observer: Observer<string>) => {
-            if (!this.childProcess) {
-                observer.error(this.throwProcessNotStartedError())
-            }
-            this.childProcess.stdout.on('data', (data) => {
-                observer.next(data.toString().trim())
-                observer.complete()
-            })
+    private setupOnOutput(): void {
+        if (!this.childProcess) {
+            this.throwProcessNotStartedError()
+        }
+        this.childProcess.stdout.on('data', (data) => {
+            this.processOutput.type = ReturnType.SUCCESS
+            this.processOutput.data = data.toString().trim()
         })
     }
 
-    private setupErrorObservable(): void {
-        this.error = Observable.create((observer: Observer<string>) => {
-            if (!this.childProcess) {
-                observer.error(this.throwProcessNotStartedError())
-            }
-            this.childProcess.stderr.on('data', (data) => {
-                observer.next(data.toString().trim())
-                observer.complete()
-            })
+    private setupOnError(): void {
+        if (!this.childProcess) {
+            this.throwProcessNotStartedError()
+        }
+        this.childProcess.stderr.on('data', (data) => {
+            this.processOutput.type = ReturnType.ERROR
+            this.processOutput.data = data.toString().trim()
         })
     }
 
-    private setupFinishObservable(): void {
-        this.finish = Observable.create((observer: Observer<{code: number, took: number}>) => {
+    private onClose(): Observable<IProcessOutput> {
+        return Observable.create((observer: Observer<IProcessOutput>) => {
             if (!this.childProcess) {
                 observer.error(this.throwProcessNotStartedError())
             }
             this.childProcess.on('close', (code) => {
-                const took = this.started ? process.hrtime(this.started)[1] / 1000000 : -1
-                observer.next({code, took})
+                if (code === null) {
+                    this.processOutput.type = ReturnType.TIMED_OUT
+                }
+                this.processOutput.code = code
+                this.processOutput.took = this.started ? process.hrtime(this.started)[1] / 1000000 : -1
+                observer.next(this.processOutput)
                 observer.complete()
             })
         })
@@ -123,6 +155,11 @@ export class Process {
     private throwProcessNotStartedError(msg?: string): never {
         msg = msg ? msg : 'Process not started.'
         throw new ProcessNotStartedError(msg)
+    }
+
+    private throwCommandNotDefinedError(msg?: string): never {
+        msg = msg ? msg : 'Command to run the process not defined.'
+        throw new CommandNotDefinedError(msg)
     }
 
 }

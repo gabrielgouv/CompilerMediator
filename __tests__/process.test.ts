@@ -1,88 +1,69 @@
 import 'jest'
 
-import { Process } from '../src/runtime/process'
+import { Process, IProcessOutput, ReturnType } from '../src/runtime/process'
 
 const fileDir = `${__dirname}/files/nodejs`
 
 test('runs a nodejs file', (done) => {
-    const process: Process = new Process()
+    new Process()
         .directory(fileDir)
-        .run('node test-output.js')
-
-    process.output.subscribe((data) => {
-        expect(data).toBe('Hello World!')
-    })
-
-    process.error.subscribe((data) => {
-        expect(data).toBe(undefined)
-    })
-
-    process.finish.subscribe((result) => {
-        expect(result.code).toBe(0)
-        done()
-    })
-
+        .command('node test-output.js')
+        .run()
+        .onFinish((processOutput: IProcessOutput) => {
+            expect(processOutput.type).toBe(ReturnType.SUCCESS)
+            expect(processOutput.data).toBe('Hello World!')
+            expect(processOutput.code).toBe(0)
+            expect(processOutput.took).not.toBe(-1)
+            expect(processOutput.took).not.toBe(undefined)
+            done()
+        })
 })
 
 test('runs a nodejs file with errors', (done) => {
-    const process: Process = new Process()
+    new Process('node test-with-errors.js')
         .directory(fileDir)
-        .run('node test-with-errors.js')
-
-    process.output.subscribe((data) => {
-        expect(data).toBe(undefined)
-    })
-
-    process.error.subscribe((data) => {
-        expect(data).not.toBe(undefined)
-    })
-
-    process.finish.subscribe((result) => {
-        expect(result.code).toBe(1)
-        done()
-    })
-
+        .run()
+        .onFinish((processOutput: IProcessOutput) => {
+            expect(processOutput.type).toBe(ReturnType.ERROR)
+            expect(processOutput.data).not.toBe(undefined)
+            expect(processOutput.code).toBe(1)
+            expect(processOutput.took).not.toBe(-1)
+            expect(processOutput.took).not.toBe(undefined)
+            done()
+        })
 })
 
 test('runs a nodejs file with infinite loop', (done) => {
-    const process: Process = new Process()
+    new Process()
         .directory(fileDir)
-        .execTimeout(100) // Sets an execution timeout
-        .run('node test-infinite-loop.js')
-
-    process.output.subscribe((data) => {
-        expect(data).not.toBe(undefined)
-    })
-
-    process.error.subscribe((data) => {
-        expect(data).toBe(undefined)
-    })
-
-    process.finish.subscribe((result) => {
-        expect(result.code).toBe(null)
-        done()
-    })
-
+        .executionTimeout(100) // Sets an execution timeout
+        .command('node test-infinite-loop.js')
+        .run()
+        .onFinish((processOutput: IProcessOutput) => {
+            console.log(processOutput)
+            expect(processOutput.type).toBe(ReturnType.TIMED_OUT)
+            expect(processOutput.data).not.toBe(undefined)
+            expect(processOutput.code).toBe(null)
+            expect(processOutput.took).not.toBe(-1)
+            expect(processOutput.took).not.toBe(undefined)
+            done()
+        })
 })
 
 test('runs a nodejs file that receives two numbers and sum', (done) => {
-    const process: Process = new Process()
+    const process = new Process()
         .directory(fileDir)
-        .execTimeout(1000)
-        .run('node test-io-sum.js')
+        .executionTimeout(1000)
+        .command('node test-io-sum.js')
+        .run()
+        .writeInput('7\n', '3\n')
 
-    process.writeInput('7\n', '3\n')
-
-    process.output.subscribe((data) => {
-        expect(data).toBe('10')
-    })
-
-    process.error.subscribe((data) => {
-        expect(data).toBe(undefined)
-    })
-
-    process.finish.subscribe((result) => {
-        expect(result.code).toBe(0)
+    process.onFinish((processOutput: IProcessOutput) => {
+        expect(processOutput.type).toBe(ReturnType.SUCCESS)
+        expect(processOutput.data).toBe('10')
+        expect(processOutput.code).toBe(0)
+        expect(processOutput.took).not.toBe(-1)
+        expect(processOutput.took).not.toBe(undefined)
         done()
     })
 
