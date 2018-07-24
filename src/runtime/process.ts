@@ -38,12 +38,12 @@ export class Process {
         }
     }
 
-    public directory(directory: string): Process {
+    public inDirectory(directory: string): Process {
         this.spawnOptions.cwd = directory
         return this
     }
 
-    public shell(shell: boolean | string): Process {
+    public useShell(shell: boolean | string): Process {
         this.spawnOptions.shell = shell
         return this
     }
@@ -53,7 +53,7 @@ export class Process {
         return this
     }
 
-    public executionTimeout(timeout: number): Process {
+    public withExecutionTimeout(timeout: number): Process {
         if (timeout && timeout > 0) {
             this.timeout = setTimeout(() => {
                 this.kill()
@@ -71,7 +71,7 @@ export class Process {
         return this
     }
 
-    public writeInput(...input: string[]): Process {
+    public writeInputOnRequested(...input: string[]): Process {
         if (!this.childProcess) {
             this.throwProcessNotStartedError()
         }
@@ -84,7 +84,7 @@ export class Process {
         return this
     }
 
-    public command(cmd: string): Process {
+    public setCommand(cmd: string): Process {
         this.cmd = cmd
         return this
     }
@@ -93,7 +93,7 @@ export class Process {
         if (this.cmd) {
             this.started = process.hrtime()
             this.childProcess = spawn(this.cmd, [], this.spawnOptions)
-            this.setup()
+            this.setupListeners()
             return this
         }
         throw this.throwCommandNotDefinedError()
@@ -107,12 +107,10 @@ export class Process {
         kill(this.childProcess.pid, 'SIGKILL')
     }
 
-    private setup() {
+    private setupListeners() {
         this.setupOnOutput()
         this.setupOnError()
-        this.childProcess.on('exit', () => {
-            clearTimeout(this.timeout)
-        })
+        this.setupOnExit()
     }
 
     private setupOnOutput(): void {
@@ -149,6 +147,12 @@ export class Process {
                 observer.next(this.processOutput)
                 observer.complete()
             })
+        })
+    }
+
+    private setupOnExit(): void {
+        this.childProcess.on('exit', () => {
+            clearTimeout(this.timeout)
         })
     }
 

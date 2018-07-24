@@ -7,8 +7,8 @@ const fileDir = `${__dirname}/files/nodejs`
 
 test('runs a nodejs file', (done) => {
     new Process()
-        .directory(fileDir)
-        .command('node test-output.js')
+        .inDirectory(fileDir)
+        .setCommand('node test-output.js')
         .run()
         .onFinish((processOutput: IProcessOutput) => {
             expect(processOutput.type).toBe(ReturnType.SUCCESS)
@@ -22,7 +22,7 @@ test('runs a nodejs file', (done) => {
 
 test('runs a nodejs file with errors', (done) => {
     new Process('node test-with-errors.js')
-        .directory(fileDir)
+        .inDirectory(fileDir)
         .run()
         .onFinish((processOutput: IProcessOutput) => {
             expect(processOutput.type).toBe(ReturnType.ERROR)
@@ -36,9 +36,9 @@ test('runs a nodejs file with errors', (done) => {
 
 test('runs a nodejs file with infinite loop', (done) => {
     new Process()
-        .directory(fileDir)
-        .executionTimeout(100) // Sets an execution timeout
-        .command('node test-infinite-loop.js')
+        .inDirectory(fileDir)
+        .withExecutionTimeout(100) // Sets an execution timeout
+        .setCommand('node test-infinite-loop.js')
         .run()
         .onFinish((processOutput: IProcessOutput) => {
             expect(processOutput.type).toBe(ReturnType.TIMED_OUT)
@@ -52,11 +52,11 @@ test('runs a nodejs file with infinite loop', (done) => {
 
 test('runs a nodejs file that receives two numbers and sum', (done) => {
     const process = new Process()
-        .directory(fileDir)
-        .executionTimeout(1000)
-        .command('node test-io-sum.js')
+        .inDirectory(fileDir)
+        .withExecutionTimeout(1000)
+        .setCommand('node test-io-sum.js')
         .run()
-        .writeInput('7\n', '3\n')
+        .writeInputOnRequested('7\n', '3\n') // need to use \n after input when using nodejs
 
     process.onFinish((processOutput: IProcessOutput) => {
         expect(processOutput.type).toBe(ReturnType.SUCCESS)
@@ -71,7 +71,7 @@ test('runs a nodejs file that receives two numbers and sum', (done) => {
 test('try to run without command', () => {
     expect(() => {
         new Process()
-        .directory(fileDir)
+        .inDirectory(fileDir)
         .run()
     }).toThrow(CommandNotDefinedError)
 })
