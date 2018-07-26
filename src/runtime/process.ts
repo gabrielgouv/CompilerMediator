@@ -1,5 +1,5 @@
 import kill from 'tree-kill'
-import { spawn, ChildProcess, SpawnOptions } from 'child_process'
+import { spawn, spawnSync, ChildProcess, SpawnOptions } from 'child_process'
 import { Observable, Observer } from 'rxjs'
 import { ProcessNotStartedError } from '../errors/process-not-started-error'
 import { CommandNotDefinedError } from '../errors/command-not-defined-error'
@@ -38,22 +38,12 @@ export class Process {
         }
     }
 
-    public inDirectory(directory: string): Process {
-        this.spawnOptions.cwd = directory
+    public inDirectory(directory: string | undefined): Process {
+        this.spawnOptions.cwd = directory || './'
         return this
     }
 
-    public useShell(shell: boolean | string): Process {
-        this.spawnOptions.shell = shell
-        return this
-    }
-
-    public hideCommandPromptOnWindows(windowsHide: boolean): Process {
-        this.spawnOptions.windowsHide = windowsHide
-        return this
-    }
-
-    public withExecutionTimeout(timeout: number): Process {
+    public withExecutionTimeout(timeout: number | undefined): Process {
         if (timeout && timeout > 0) {
             this.timeout = setTimeout(() => {
                 this.kill()
@@ -71,7 +61,7 @@ export class Process {
         return this
     }
 
-    public writeInputOnRequested(...input: string[]): Process {
+    public writeInputWhenRequested(...input: string[]): Process {
         if (!this.childProcess) {
             this.throwProcessNotStartedError()
         }
@@ -84,8 +74,8 @@ export class Process {
         return this
     }
 
-    public setCommand(cmd: string): Process {
-        this.cmd = cmd
+    public setCommand(cmd: string | undefined): Process {
+        this.cmd = cmd || this.throwCommandNotDefinedError()
         return this
     }
 
@@ -151,6 +141,9 @@ export class Process {
     }
 
     private setupOnExit(): void {
+        if (!this.childProcess) {
+            this.throwProcessNotStartedError()
+        }
         this.childProcess.on('exit', () => {
             clearTimeout(this.timeout)
         })

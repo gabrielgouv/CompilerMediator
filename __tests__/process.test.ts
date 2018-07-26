@@ -56,7 +56,7 @@ test('runs a nodejs file that receives two numbers and sum', (done) => {
         .withExecutionTimeout(1000)
         .setCommand('node test-io-sum.js')
         .run()
-        .writeInputOnRequested('7\n', '3\n') // need to use \n after input when using nodejs
+        .writeInputWhenRequested('7\n', '3\n') // need to use \n after input when using nodejs
 
     process.onFinish((processOutput: IProcessOutput) => {
         expect(processOutput.type).toBe(ReturnType.SUCCESS)
