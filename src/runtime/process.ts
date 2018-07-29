@@ -1,8 +1,9 @@
 import kill from 'tree-kill'
-import { spawn, spawnSync, ChildProcess, SpawnOptions } from 'child_process'
+import { spawn, ChildProcess, SpawnOptions } from 'child_process'
 import { Observable, Observer } from 'rxjs'
 import { ProcessNotStartedError } from '../errors/process-not-started-error'
 import { CommandNotDefinedError } from '../errors/command-not-defined-error'
+import { Logger } from '../utils/logger'
 
 export enum ReturnType {
     SUCCESS,
@@ -21,15 +22,18 @@ export class Process {
 
     private childProcess!: ChildProcess
     private spawnOptions: SpawnOptions
+    private cmd!: string
     private timeout: any
     private started!: [number, number]
     private processOutput: IProcessOutput
 
-    constructor(private cmd?: string, options?: SpawnOptions) {
+    constructor(options?: SpawnOptions) {
         this.processOutput = {}
         if (options) {
+            Logger.debug(`Using custom options: ${JSON.stringify(options)}`)
             this.spawnOptions = options
         } else {
+            Logger.debug('Options not set. Using default options.')
             this.spawnOptions = {
                 cwd: './',
                 shell: true,
@@ -53,7 +57,7 @@ export class Process {
     }
 
     public onFinish(callback: (output: IProcessOutput) => void): Process {
-        this.onClose().subscribe((processOutput) => {
+        this.onExit().subscribe((processOutput) => {
             callback(processOutput)
         }, (error) => {
             throw error
@@ -100,7 +104,6 @@ export class Process {
     private setupListeners() {
         this.setupOnOutput()
         this.setupOnError()
-        this.setupOnExit()
     }
 
     private setupOnOutput(): void {
@@ -123,13 +126,15 @@ export class Process {
         })
     }
 
-    private onClose(): Observable<IProcessOutput> {
+    private onExit(): Observable<IProcessOutput> {
         return Observable.create((observer: Observer<IProcessOutput>) => {
             if (!this.childProcess) {
                 observer.error(this.throwProcessNotStartedError())
             }
-            this.childProcess.on('close', (code) => {
+            this.childProcess.on('exit', (code) => {
+                clearTimeout(this.timeout)
                 if (code === null) {
+                    Logger.debug('Process timed out')
                     this.processOutput.type = ReturnType.TIMED_OUT
                 }
                 this.processOutput.code = code
@@ -140,22 +145,13 @@ export class Process {
         })
     }
 
-    private setupOnExit(): void {
-        if (!this.childProcess) {
-            this.throwProcessNotStartedError()
-        }
-        this.childProcess.on('exit', () => {
-            clearTimeout(this.timeout)
-        })
-    }
-
     private throwProcessNotStartedError(msg?: string): never {
-        msg = msg ? msg : 'Process not started.'
+        msg = msg || 'Process not started.'
         throw new ProcessNotStartedError(msg)
     }
 
     private throwCommandNotDefinedError(msg?: string): never {
-        msg = msg ? msg : 'Command to run the process not defined.'
+        msg = msg || 'Command to run the process not defined.'
         throw new CommandNotDefinedError(msg)
     }
 

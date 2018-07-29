@@ -9,7 +9,6 @@ test('runs a nodejs file', (done) => {
     new Compiler()
         .runCommand('node test-output.js')
         .directory(fileDir)
-        .executionTimeout(5000)
         .execute((output) => {
             expect(output.type).toBe(ReturnType.SUCCESS)
             expect(output.data).toBe('Hello World!')

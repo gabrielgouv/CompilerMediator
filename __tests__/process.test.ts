@@ -21,8 +21,13 @@ test('runs a nodejs file', (done) => {
 })
 
 test('runs a nodejs file with errors', (done) => {
-    new Process('node test-with-errors.js')
+    new Process({
+        cwd: fileDir,
+        shell: true,
+        windowsHide: false,
+    })
         .inDirectory(fileDir)
+        .setCommand('node test-with-errors.js')
         .run()
         .onFinish((processOutput: IProcessOutput) => {
             expect(processOutput.type).toBe(ReturnType.ERROR)
@@ -37,7 +42,7 @@ test('runs a nodejs file with errors', (done) => {
 test('runs a nodejs file with infinite loop', (done) => {
     new Process()
         .inDirectory(fileDir)
-        .withExecutionTimeout(100) // Sets an execution timeout
+        .withExecutionTimeout(100)
         .setCommand('node test-infinite-loop.js')
         .run()
         .onFinish((processOutput: IProcessOutput) => {
