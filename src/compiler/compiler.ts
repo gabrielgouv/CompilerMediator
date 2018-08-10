@@ -2,6 +2,7 @@ import { Process, IProcessOutput, ReturnType } from '../runtime/process'
 import { ICompilerOptions } from './compiler-options'
 import { CommandBuilder } from './command-builder'
 import { Observable, Observer } from 'rxjs'
+import { completeObserver } from '../utils/rxjs-util'
 
 export class Compiler {
 
@@ -60,15 +61,13 @@ export class Compiler {
                 this.compile().subscribe((compileOutput) => {
                     if (compileOutput.type === ReturnType.SUCCESS) {
                         this.run().subscribe((runOutput) => {
-                            observer.next(runOutput)
-                            observer.complete()
+                            completeObserver(observer, runOutput)
                         })
                     }
                 })
             } else {
                 this.run().subscribe((runOutput) => {
-                    observer.next(runOutput)
-                    observer.complete()
+                    completeObserver(observer, runOutput)
                 })
             }
         })
@@ -82,8 +81,7 @@ export class Compiler {
                 .setCommand(this.commandParser(this.options.compile))
                 .run()
                 .onFinish((processOutput: IProcessOutput) => {
-                    observer.next(processOutput)
-                    observer.complete()
+                    completeObserver(observer, processOutput)
                 })
         })
     }
@@ -99,8 +97,7 @@ export class Compiler {
                 compileProcess.writeInputWhenRequested(...this.inputs)
             }
             compileProcess.onFinish((output: IProcessOutput) => {
-                observer.next(output)
-                observer.complete()
+                completeObserver(observer, output)
             })
         })
     }

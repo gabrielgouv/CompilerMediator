@@ -4,6 +4,7 @@ import { Observable, Observer } from 'rxjs'
 import { ProcessNotStartedError } from '../errors/process-not-started-error'
 import { CommandNotDefinedError } from '../errors/command-not-defined-error'
 import { Logger } from '../utils/logger'
+import { completeObserver } from '../utils/rxjs-util'
 
 export enum ReturnType {
     SUCCESS,
@@ -139,8 +140,7 @@ export class Process {
                 }
                 this.processOutput.code = code
                 this.processOutput.took = this.started ? process.hrtime(this.started)[1] / 1000000 : -1
-                observer.next(this.processOutput)
-                observer.complete()
+                completeObserver(observer, this.processOutput)
             })
         })
     }
