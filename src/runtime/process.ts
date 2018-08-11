@@ -21,6 +21,8 @@ export interface IProcessOutput {
 
 export class Process {
 
+    private readonly DEFAULT_CWD = './'
+
     private childProcess!: ChildProcess
     private spawnOptions: SpawnOptions
     private cmd!: string
@@ -35,16 +37,12 @@ export class Process {
             this.spawnOptions = options
         } else {
             Logger.debug('Options not set. Using default options.')
-            this.spawnOptions = {
-                cwd: './',
-                shell: true,
-                windowsHide: true,
-            }
+            this.spawnOptions = this.getDefaultOptions()
         }
     }
 
     public inDirectory(directory: string | undefined): Process {
-        this.spawnOptions.cwd = directory || './'
+        this.spawnOptions.cwd = directory || this.DEFAULT_CWD
         return this
     }
 
@@ -66,15 +64,12 @@ export class Process {
         return this
     }
 
-    public writeInputWhenRequested(...input: string[]): Process {
+    public writeInputWhenRequested(...inputs: string[]): Process {
         if (!this.childProcess) {
             this.throwProcessNotStartedError()
         }
-        if (input) {
-            for (const index of input.keys()) {
-                this.childProcess.stdin.write(input[index])
-            }
-            this.childProcess.stdin.end()
+        if (inputs) {
+            this.writeDataInStdin(inputs)
         }
         return this
     }
@@ -100,6 +95,21 @@ export class Process {
 
     public kill(): void {
         kill(this.childProcess.pid, 'SIGKILL')
+    }
+
+    private getDefaultOptions() {
+        return {
+            cwd: this.DEFAULT_CWD,
+            shell: true,
+            windowsHide: true,
+        }
+    }
+
+    private writeDataInStdin(data: string[]) {
+        for (const index of data.keys()) {
+            this.childProcess.stdin.write(data[index])
+        }
+        this.childProcess.stdin.end()
     }
 
     private setupListeners() {

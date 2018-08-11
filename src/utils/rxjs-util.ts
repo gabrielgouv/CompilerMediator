@@ -1,4 +1,4 @@
-import { Observable, Observer } from 'rxjs'
+import { Observer } from 'rxjs'
 
 export const completeObserver = (observer: Observer<any>, ...objects: any[]) => {
     for (const obj of objects) {
